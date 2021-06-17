@@ -1,2 +1,11 @@
+# PyCharm settings
 .idea
+
+# Data for now
 data/spxSingleStockData.csv
+data/spxIndexData.csv
+data/spxSingleStockData_div.csv
+data/spxSingleStockData_info.csv
+
+# Dev
+playground.py
