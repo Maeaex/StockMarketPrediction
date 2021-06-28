@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 
 
 def openHistoryYFcsv(file, regFilter=None):
@@ -17,39 +18,41 @@ def openHistoryYFcsv(file, regFilter=None):
     return df
 
 
-def createStockForecastData(stock_pick):
-    df_merge = df_stocks.merge(df_spx, how="inner", left_index=True, right_index=True)
-    df_div = pd.DataFrame(pd.read_csv(file_div, delimiter=",", parse_dates=True, index_col="Date")[stock_pick],
-                          columns=[stock_pick])
-    df_div.columns = ["Div"]
-    df_set = pd.DataFrame(df_merge, columns=["SPX", stock_pick])
-    df_set = df_set.merge(df_div, how="left", left_index=True, right_index=True)
-    df_set["div_yield"] = df_set["Div"] / df_set[stock_pick]
-    df_set = df_set.drop(columns=["Div"])
-    r_cols = ["r_SPX", "r_"+stock_pick]
-    df_set[r_cols] = df_merge[["SPX", stock_pick]].ffill().pct_change()
-    df_set["r_diff"] = df_set[stock_pick] - df_set["SPX"]
-    df_set["r_diff_shift"] = df_set["r_diff"].shift(-1)
-    df_set["30d_std_stock"] = df_set[stock_pick].rolling(30).std()
-    df_set["30d_std_SPX"] = df_set["SPX"].rolling(30).std()
-    df_set["cum_ret_stock"] = 100 * (1 + df_set[stock_pick]).cumprod()
-    df_set["cum_ret_SPX"] = 100 * (1 + df_set["SPX"]).cumprod()
-    df_set["week"] = df_set.index.isocalendar().week
-    df_set["month"] = df_set.index.month
-    df_set = df_set.merge(df_div, how="left", left_index=True, right_index=True)
+def createDataApp(data, datePicker, threshOut):
 
-    df_wk = df_set.resample('W').ffill()
+    r_cols = ["r_SPX", "r_Stock"]
+    r_cols_daily = ["r_SPX_daily", "r_Stock_daily"]
+    data[r_cols_daily] = data[["SPX", "Stock"]].ffill().pct_change()
+    data["30d_std_Stock"] = data["r_Stock_daily"].rolling(30).std()
+    data["30d_std_SPX"] = data["r_SPX_daily"].rolling(30).std()
+    data["std_ratio"] = data["30d_std_Stock"] / data["30d_std_SPX"]
+    data = data.drop(["r_SPX_daily", "r_Stock_daily"], axis=1)
 
-    return df_wk
+    data = data.resample('W').ffill()
 
+    data[r_cols] = data[["SPX", "Stock"]].ffill().pct_change()
+    data["cum_ret_Stock"] = 100 * (1 + data["r_Stock"]).cumprod()
+    data["cum_ret_SPX"] = 100 * (1 + data["r_SPX"]).cumprod()
+    data["based_Ratio"] = data["cum_ret_Stock"] / data["cum_ret_SPX"]
+    data["r_diff"] = data["r_Stock"] - data["r_SPX"]
+    data["r_diff_shift"] = data["r_diff"].shift(1)
+    data["week"] = data.index.isocalendar().week
+    data["month"] = data.index.month
 
-file_stocks = "data/spxSingleStockData.csv"
-filter_price = "Adj Close"
-df_stocks = openHistoryYFcsv(file_stocks, filter_price)
-file_spx = "data/spxIndexData.csv"
-df_spx = pd.DataFrame(pd.read_csv(file_spx, delimiter=",", parse_dates=True, index_col="Date")["Close"],
-                      columns=["Close"])
-df_spx.columns = ["SPX"]
-file_div = "data/spxSingleStockData_div.csv"
-stock_pick = "AAPL"
+    conditions_date = [(data.index < datePicker),
+                       (data.index >= datePicker),
+                       ]
+
+    values_date = ["train", "validation"]
+    data["split"] = np.select(conditions_date, values_date)
+
+    conditions_tgt = [(data["r_diff_shift"] < threshOut),
+                      (np.isnan(data["r_diff_shift"])),
+                      (data["r_diff_shift"] >= threshOut)]
+
+    values_tgt = [0, 0, 1]
+    data["target"] = np.select(conditions_tgt, values_tgt)
+
+    return data
+
 

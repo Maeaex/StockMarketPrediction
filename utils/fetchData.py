@@ -2,7 +2,18 @@
 import yfinance as yf
 import pandas as pd
 
-def fetchTickerData(tickerList, mode):
+def fetchTickerDataApp(ticker, period):
+    tickers = ticker + " " + "^GSPC"
+    data = yf.download(tickers, period=period)
+    data = data.dropna()
+    data = data.filter(regex='Adj Close')
+    data.columns = data.columns.droplevel()
+    data.columns = ['Stock', 'SPX']
+
+    return data
+
+
+def fetchTickerData(tickerList, mode='hist'):
     data_list = list()
     for ticker in tickerList:
         try:
@@ -32,6 +43,8 @@ def fetchTickerData(tickerList, mode):
 
     return df
 
+
+'''
 tickerList = pd.read_csv("../data/spxTickerList.csv", delimiter=",")
 tickerTuple = tuple(list(tickerList["Symbol"]))
 
@@ -46,6 +59,9 @@ for arg in args:
 symbol = yf.Ticker("^GSPC")
 spxData = symbol.history(period="5y", group_by="Ticker")
 spxData.to_csv("../data/spxIndexData.csv")
+
+'''
+
 
 
 
