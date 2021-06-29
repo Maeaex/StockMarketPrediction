@@ -1,6 +1,6 @@
 # Stock Market Prediction 
 
-###Installation
+### Installation
 
 App was developed on Python Version 3.7.10.
 
@@ -18,7 +18,7 @@ Run script `main.py` (optionally app.py - the location of the app)
 
 FYI: On load callback errors will be displayed in the console as the app's state-management has to be improved.
 
-####Folder structure
+#### Folder structure
     
     StockMarketPrediction
         assets |
