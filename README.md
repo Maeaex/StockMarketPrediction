@@ -100,6 +100,14 @@ Usage of sklearn's TimeSeriesSplit helps to model time-series and classification
 * No Scaler was used
 * Used models with different parameters: Support Vector Machine, Decision Tree Classifier, Naive Bayes Classifier
 
+##### Address Overfitting
+As our validation does significant worse compared to our train/test set we have following options.
+* Feature selection for models that do not perform feature selection naturally 
+* Early stopping or regularization (L1/L2 norm)
+* Penalty of minority class
+* For DL Models -- Fewer layers our dropouts for neurons
+
+To-do: Plot GridSearchCV results to better understand model dynamics.
 
 ## Data & Feature Set
 
@@ -133,6 +141,14 @@ List of features:
 1. Returns are likely heavy tailed and skewed
 2. Return differential even more heavy tailed
 3. Weekly out-/underperformance tends to be clustered (stock momentum, industry trends etc.)
+
+## Trading Strategy 
+If one of the models would predict stock outperformance consistently (>50% of the cases) on validation data then one can 
+think about a low beta long/short strategy. If stock is predicted to outperform then buy stock with a given nominal and short 
+the SPX using futures or an inverse ETF with the same amount. 
+
+To have better predictions I would add risk factors to the models. An idea about constructable risk factors are provided in another
+[app](https://max-analytics-rm.herokuapp.com/) I developed. Risk factors are mainly derived from balance sheet and earnings data.
 
 ## Features for development in this app
 1. Descriptive Analysis - Better understand dynamics in the data (e.g. Scatter plot, correlation matrix etc.)
