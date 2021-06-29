@@ -7,7 +7,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import AdaBoostClassifier
 from sklearn.naive_bayes import GaussianNB
-from sklearn.metrics import confusion_matrix
+from sklearn.metrics import balanced_accuracy_score
 
 
 import pandas as pd
@@ -62,7 +62,7 @@ def initModels(data_split):
     params_grid = [{
                 'estimator':[SVC(probability=True)],
                 'estimator__C': [10, 100, 1000],
-                'estimator__kernel': ['rbf', 'poly'],
+                'estimator__kernel': ['rbf'],                # 'poly' --> For Performance we neglect rbf for SVC
                 'estimator__gamma': [0.001, 0.0001]
                 },
                 {
@@ -84,6 +84,8 @@ def creatMlData(grid, X, X_val, y, y_val):
     y_pred = pd.DataFrame(grid.predict(X), columns=["y_pred"], index=y.index)
     y_pred_prob = pd.DataFrame(grid.predict_proba(X), columns=["y_pred_prob_pos", "y_pred_prob_neg"], index=y.index)
 
+    score = balanced_accuracy_score(y, y_pred)
+
     ys = y_pred.merge(y, left_index=True, right_index=True)
     ys = ys.merge(y_pred_prob, left_index=True, right_index=True)
 
@@ -95,6 +97,8 @@ def creatMlData(grid, X, X_val, y, y_val):
     y_pred_val = pd.DataFrame(grid.predict(X_val), columns=["y_pred"], index=y_val.index)
     y_pred_val_prob = pd.DataFrame(grid.predict_proba(X_val), columns=["y_pred_prob_pos", "y_pred_prob_neg"], index=y_val.index)
 
+    score_val = balanced_accuracy_score(y_val, y_pred_val)
+
     ys_val = y_pred_val.merge(y_val, left_index=True, right_index=True)
     ys_val = ys_val.merge(y_pred_val_prob, left_index=True, right_index=True)
 
@@ -104,11 +108,9 @@ def creatMlData(grid, X, X_val, y, y_val):
     ys_val["color"] = comparison_column_col_val
 
     bModel = grid.best_params_['estimator']
-    conf = confusion_matrix(ys["target"], ys["y_pred"])
-    conf_val = confusion_matrix(ys_val["target"], ys_val["y_pred"])
 
 
-    return ys, ys_val, bModel, conf, conf_val, None, None
+    return ys, ys_val, bModel, score, score_val
 
 '''
 {

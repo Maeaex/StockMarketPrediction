@@ -15,8 +15,7 @@ import pandas as pd
 import numpy as np
 
 # Initialize the app
-app = dash.Dash(__name__)
-app.config.suppress_callback_exceptions = True
+app = dash.Dash(__name__,  suppress_callback_exceptions=True)
 
 df_tickers = pd.read_csv("data/spxTickerList.csv")
 
@@ -92,8 +91,8 @@ app.layout = html.Div(
                                              id='datePicker',
                                              display_format='DD-MM-YYYY',
                                              first_day_of_week=1,
-                                             initial_visible_month=str(date.today() - timedelta(days=28)),
-                                             max_date_allowed=date.today() - timedelta(days=7),
+                                             date=(date.today() - timedelta(days=28)),
+                                             max_date_allowed=date.today() - timedelta(days=1),
                                              style={'background-color': '#1E1E1E'}
                                          )
                                      ]
@@ -161,7 +160,9 @@ app.layout = html.Div(
                                             ## App enhancements
                                             
                                             * Layouting (Fonts, Grid-Color if no data is available for charts yet)
-                                            * App State-Management - prevent App from updating if no user interaction occured                                       
+                                            * App State-Management - prevent App from updating if no user interaction occurred
+                                            * DatePicker Update (default value is selected after "Get Data" button was clicked)
+                                                                                   
                                             ''')
                                      ]
                                  ),
@@ -169,13 +170,16 @@ app.layout = html.Div(
                              ),
                     html.Div(className='eight columns div-for-charts bg-grey',
                              children=[
-                                dcc.Graph(id='timeseries'),
-                                dcc.Graph(id='outperformance'),
-                                html.H2("Charts below and ML fitting do not include validation set (green pane)", style={'text-align': 'center'}),
-                                dcc.Graph(id='distPlot'),
-                                dcc.Graph(id='trainPlot'),
-                                dcc.Graph(id='valPlot'),
-                                dcc.Markdown('''
+                                 dcc.Graph(id='timeseries'),
+                                 dcc.Graph(id='outperformance'),
+                                 html.H2("Charts below and ML fitting do not include validation set (green pane)", style={'text-align': 'center'}),
+                                 dcc.Graph(id='distPlot'),
+                                 html.Div(id='out-model'),
+                                 html.Div(id='out-score'),
+                                 html.Div(id='out-pred'),
+                                 dcc.Graph(id='trainPlot'),
+                                 dcc.Graph(id='valPlot'),
+                                 dcc.Markdown('''
                                 
                                 # Motivation
                                 Aim is to demonstrate DataScience/Econometrics skills combined with know-how in process automatization & app development. 
@@ -273,8 +277,10 @@ app.layout = html.Div(
 
 def getData(n_clicks, stockValue, periodValue, datePicker, threshOut):
     print("Get Data Button:", n_clicks)
+    print("datePicker before selected", datePicker)
     if datePicker is None:
-        datePicker = str(date.today() - timedelta(days=28))
+        #datePicker = str(date.today() - timedelta(days=28))
+        print("datePicker default selected", datePicker)
 
     if threshOut is None:
         threshOut = 0.03
@@ -431,7 +437,10 @@ def update_change(jsonified_cleaned_data):
     return figure
 
 @app.callback([Output('trainPlot', 'figure'),
-              Output('valPlot', 'figure')],
+              Output('valPlot', 'figure'),
+              Output("out-model", "children"),
+              Output("out-score", "children"),
+              Output("out-pred", "children")],
               [Input('stockData', 'data')],
               [Input('triggerML', 'n_clicks')],
               [State('splitML', 'value')],
@@ -453,8 +462,18 @@ def update_change(jsonified_cleaned_data, n_clicks, splits):
         mlGrid = mlGrid.fit(X,y)
         print("Model fitted")
 
-        ys, ys_val, bModel, conf, conf_val, y_pred_prob, y_pred_val_prob = ml.creatMlData(mlGrid, X, X_val, y, y_val)
+        ys, ys_val, bModel, score, score_val = ml.creatMlData(mlGrid, X, X_val, y, y_val)
         print("visual data generated")
+
+        model_str = "Best Model for train/test: " + str(bModel)
+        score_str = 'Balanced Accuracy train / validation: ' + '{0:.0%}'.format(score) + " / " + '{0:.0%}'.format(score_val)
+        print(model_str, score_str)
+
+        pred_l_week = ys_val.loc[ys_val.index.max()].at['y_pred']
+        if pred_l_week == 1:
+            pred_str = "Model predicts outperformance for week " + str(ys_val.index.max().strftime("%W-%Y")) + " for provided threhhold"
+        else:
+            pred_str = "Model predicts no outperformance for week " + str(ys_val.index.max().strftime("%W-%Y")) + " for provided threhhold"
 
         figure1 = make_subplots(rows=2, cols=1)
 
@@ -523,7 +542,7 @@ def update_change(jsonified_cleaned_data, n_clicks, splits):
             title={'text': 'Correct and Incorrect classifications (validation)', 'font': {'color': 'white'}, 'x': 0.5},
             legend=dict(orientation="h")
         )
-        return figure1, figure2
+        return figure1, figure2, model_str, score_str, pred_str
 
     else:
         pass
@@ -532,4 +551,7 @@ def update_change(jsonified_cleaned_data, n_clicks, splits):
 
 
 if __name__ == '__main__':
-    app.run_server(debug=True)
+    app.run_server(debug=False, dev_tools_ui=False,dev_tools_props_check=False)
+
+
+
